@@ -13,11 +13,7 @@ Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_
 
 ## Usage
 
-* key-name file input:
-
-  `s3turbo.py key_name_file`
-
-* OR single-line transfer:
+* single-line transfer:
 
   to download - `s3turbo.py s3://bucket_name/path/key_name local:///full_path/filename`
 
@@ -25,9 +21,13 @@ Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_
 
   to copy     - `s3turbo.py s3://bucket1/path/key_name s3://bucket2/path/key_name`
 
+* OR key-name file input:
+
+  `s3turbo.py key_name_file`
+
 * OR rsync functionality (end both args with slashes)
 
-  `s3turbo.py (s3|local):path/ (s3|local):path/ [include include_string] [exclude exclude_string] [remove_prefix prefix]`
+  `s3turbo.py (s3|local)://path/ (s3|local)://path/ [include include_string] [exclude exclude_string] [remove_prefix prefix]`
 
   e.g. `s3turbo.py local:///home/username/path s3://owner.run.etc/etc_dir/ include .py exclude .pyc remove_prefix /home/username`
 
