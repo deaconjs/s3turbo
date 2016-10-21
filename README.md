@@ -1,5 +1,5 @@
 # s3turbo
-A Python command-line program for transferring large files to, from, and between s3 buckets.
+A Python command-line program for transferring large files to, from, and between s3 buckets, ec2 instances, and local.
 
 
 ## Install
