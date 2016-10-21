@@ -17,11 +17,11 @@ configure .boto credentials file as here: boto.cloudhackers.com/en/latest/boto_c
 
 key-name file input:
 
-  <s3turbo.py key_name_file>
+  `<s3turbo.py key_name_file>`
 
 OR single-line transfer:
 
-  to download - <s3turbo.py s3://bucket_name/path/key_name local:///full_path/filename>
+  to download - `<s3turbo.py s3://bucket_name/path/key_name local:///full_path/filename>`
 
   to upload   - <s3turbo.py local:///full_path/filename s3://bucket_name/path/key_name>
 
