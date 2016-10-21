@@ -31,6 +31,10 @@ Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_
 
   e.g. `s3turbo.py local:///home/username/path s3://owner.run.etc/etc_dir/ include .py exclude .pyc remove_prefix /home/username`
 
+The key_name_file format should follow the same conventions as single-line format, with one line per file to transfer. If an input file is used, the file list can contain a mixture of download, copy, and upload commands, in any order.
+
+Files are by default not overwritten, so it is safe to restart multiple file transfer operations that were interrupted. Download functionality skips existing local files by the same name but only if they are the same size. The copy and upload functionalities do check file names, but do not yet check file sizes.
+
 * Optional dryrun flag
 
   `s3turbo.py args [dryrun] [args]`
@@ -39,8 +43,6 @@ Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_
 
   `s3turbo.py args [reduced_redundancy] [args]`
 
-The key_name_file format should follow the same conventions as single-line format, with one line per file to transfer. If an input file is used, the file list can contain a mixture of download, copy, and upload commands, in any order.
 
 The dry_run flag prints out the files to be transferred, without transferring any. Output is standard input format. The reduced_redundancy flag uses that class of AWS storage. This saves some money but has slightly higher odds of data loss.
 
-Files are by default not overwritten, so it is safe to restart multiple file transfer operations that were interrupted. Download functionality skips existing local files by the same name but only if they are the same size. The copy and upload functionalities do check file names, but do not yet check file sizes.
