@@ -27,7 +27,7 @@ Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_
 
 * OR rsync functionality (end both args with slashes)
 
-  `s3turbo.py (s3|local)://path/ (s3|local)://path/ [include include_string] [exclude exclude_string] [remove_prefix prefix]`
+  `s3turbo.py (s3|local):path/ (s3|local):path/ [include include_string] [exclude exclude_string] [remove_prefix prefix]`
 
   e.g. `s3turbo.py local:///home/username/path s3://owner.run.etc/etc_dir/ include .py exclude .pyc remove_prefix /home/username`
 
