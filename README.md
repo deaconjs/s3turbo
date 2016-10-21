@@ -1,5 +1,5 @@
 # s3turbo
-A Python module for transferring large files to, from, and between s3 buckets.
+A Python command-line program for transferring large files to, from, and between s3 buckets.
 
 
 ## Install
@@ -8,7 +8,7 @@ To use, first install boto and filechunkio.
 
 `$ pip install boto, filechunkio`
 
-configure .boto credentials file as here: boto.cloudhackers.com/en/latest/boto_config_tut.html
+Configure .boto credentials file as here: boto.cloudhackers.com/en/latest/boto_config_tut.html, then clone the s3turbo repo.
 
 
 ## Usage
