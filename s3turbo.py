@@ -15,22 +15,28 @@ owner = 'deaconjs'
 # assume moltype data is in owner.moltype.in/moltypebatches
 
 
+# stackoverflow.com/questions/2186525/us-a-glob-to-find-files-recursively-in-python
 def recursive_glob(rootdir='.', suffix=''):
     return [os.path.join(looproot, filename)
             for looproot, _, filenames in os.walk(rootdir)
             for filename in filenames if filename.endswith(suffix)]
 
+# stackoverflow.com/questions/6974695/python-process-pool-non-daemonic
+# used to dispose of pool threads properly
 class NoDaemonProcess(multiprocessing.Process):
     def _get_daemon(self):
         return False
     def _set_daemon(self, value):
         pass
     daemon = property(_get_daemon, _set_daemon)
-
-
 class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
+
+# offer basic rsync-like multiple file transfer syntax
+# include means get any files with the included substring
+# exclude means skip any files with the included substring
+# remove_prefix means to remove a substring from the prefix end of the destination path
 include_string = None
 exclude_string = None
 remove_prefix = None
@@ -51,32 +57,35 @@ for x, arg in enumerate(sys.argv):
         del sys.argv[x+1]
         del sys.argv[x]
 
+# reduced verbosity
 for x, arg in enumerate(sys.argv):
     if arg == 'quiet':
         quiet_flag = True
         del sys.argv[x]
 
-if include_string:
+if not quiet_flag and include_string:
     print "including files with string %s"%(include_string)
-if exclude_string:
+if not quiet_flag and exclude_string:
     print "excluding files with string %s"%(exclude_string)
-if remove_prefix:
+if not quiet_flag and remove_prefix:
     print "removing string %s from destination path"%(remove_prefix)
 
+# dryrun means just print out the files
 dryrun_flag = False
 for x, arg in enumerate(sys.argv):
     if arg == "dryrun" or arg == '-dryrun' or arg == '--dryrun':
         dryrun_flag = True
         del sys.argv[x]
-if dryrun_flag:
+if not quiet_flag and dryrun_flag:
     print "dryrun set to true"
 
+# store in reduced redundancy mode on s3
 reduced_redundancy_flag = False
 for x, arg in enumerate(sys.argv):
     if arg == 'reduced_redundancy' or arg == 'rr' or arg == '-reduced_redundancy' or arg == '-rr' or arg == '--reduced_redundancy' or arg == '--rr':
         reduced_redundancy_flag = True
         del sys.argv[x]
-if reduced_redundancy_flag:
+if not quiet_flag and reduced_redundancy_flag:
     print 'reduced redundancy set to true'
 
 # add these to command-line arguments
@@ -86,7 +95,7 @@ concurrency = cores
 remove_source_for_copies = False
 
 conn = boto.connect_s3()
-remap_flag = False        # note that the remap flag only currently works for move functions
+# remap_flag = False        # note that the remap flag only currently works for move functions
 
 # currently cannot map to top level directory. fix me please
 copy_pattern     = r's3:\/\/.+\/.+ s3:\/\/.+\/.+'
@@ -95,10 +104,15 @@ upload_pattern   = r'local:\/\/.+\/.+ s3:\/\/.+\/.+'
 
 # command line example: s3turbo.py some_database:study1_equals_studyID sorted.bam sorted.bai
 # e.g. criteria = 'some_database:study1_equals_studyID'
-lines = []
-criteria = ""
+
+# input arguments determine how this lines variable is loaded. This contains the full set of
+# properly formatted sources and destinations, with one file per line. If an input file is
+# specified then lines is directly loaded with its exact contents
+lines = []   
+#criteria = ""
 filetypes = []
 if len(sys.argv) > 2:
+    """
     if sys.argv[2] == "remap":
         if os.path.isfile(sys.argv[1]):
             remap_flag = True
@@ -107,89 +121,89 @@ if len(sys.argv) > 2:
             print "Fatal Error: key name file %s does not exist. A key file must be included for remapping"%(sys.argv[1])
             sys.exit()
     else:
-        if (sys.argv[2].startswith('s3') or sys.argv[2].startswith('local')):
-            command = ' '.join(sys.argv[1:]).strip()
-            if re.match(copy_pattern, command) or re.match(download_pattern, command) or re.match(upload_pattern, command):
-                source = sys.argv[1]
-                destination = sys.argv[2]
-                if not source.endswith('/') and not destination.endswith('/'):
-                    lines = [command]
-                elif (source.endswith('/') and not destination.endswith('/')) or (not source.endswith('/') and destination.endswith('/')):
-                    print "Fatal error: for rsync functionality both source and target specifications should end with frontslashes"
-                    sys.exit()
-                else:    # rsync functionality
-                    if re.match(copy_pattern, command):    # bucket-to-bucket
-                        target_bucketname, target_keyprefix = destination.split('/')[2], '/'.join(destination.split('/')[3:])
-                        source_bucketname, source_keyprefix = source.split('/')[2], '/'.join(source.split('/')[3:])
-                        target_bucket = conn.get_bucket(target_bucketname)
-                        source_bucket = conn.get_bucket(source_bucketname)
-                        target_lst = target_bucket.list(prefix=target_keyprefix)
-                        lst = source_bucket.list(prefix=source_keyprefix)
-                        for key in lst:
-                            if key.name.endswith('/'):
-                                continue
-                            source_key = source_bucket.get_key(key.name)
-                            target_key = target_bucket.get_key('%s/%s'%(target_keyprefix, key.name))
-                            # copy if the target key does not exist, or if the target and source keys are not the same size
-                            if target_key:
-                                if target_key.size != source_key.size:
-                                    lines.append('s3://%s/%s s3://%s/%s%s'%(source_bucketname, key.name, target_bucketname, target_keyprefix, key.name))
-                            else:
-                                lines.append('s3://%s/%s s3://%s/%s%s'%(source_bucketname, key.name, target_bucketname, target_keyprefix, key.name))
-                    elif re.match(download_pattern, command):
-                        target_directory = '/'.join(destination.split('/')[2:])
-                        source_bucketname, source_keyprefix = source.split('/')[2], '/'.join(source.split('/')[3:])
-                        source_bucket = conn.get_bucket(source_bucketname)
-                        lst = source_bucket.list(prefix=source_keyprefix)
-                        
-                        for key in lst:
-                            if key.name.endswith('/'):
-                                continue
-                            source_key = source_bucket.get_key(key.name)
-                            if os.path.isfile('%s/%s'%(target_directory, key.name)):
-                                if source_key.size != os.path.getsize('%s/%s'%(target_directory, key.name)):
-                                    lines.append('s3://%s/%s local://%s/%s'%(source_bucketname, key.name, target_directory, key.name))
-                            else:
-                                lines.append('s3://%s/%s local://%s/%s'%(source_bucketname, key.name, target_directory, key.name))
-                    elif re.match(upload_pattern, command):
-                        source_directory = '/'.join(source.split('/')[2:])
-                        target_bucketname, target_keyprefix = destination.split('/')[2], '/'.join(destination.split('/')[3:])
-                        source_files = recursive_glob('%s'%(source_directory))
-                        print len(source_files)
-                        target_bucket = conn.get_bucket(target_bucketname)
-                        for source_file in source_files:
-                            if not os.path.isfile(source_file):
-                                continue
-                            target_key = target_bucket.get_key('%s/%s'%(target_keyprefix, source_file))
-                            if target_key:
-                                if target_key.size != os.path.getsize(source_file):
-                                    lines.append('local://%s s3://%s/%s%s'%(source_file, target_bucketname, target_keyprefix, source_file))
-                            else:
-                                lines.append('local://%s s3://%s/%s%s'%(source_file, target_bucketname, target_keyprefix, source_file))
-                    else:
-                        print "Fatal error: pattern %s does not match built-in patterns"%(command)
-                        sys.exit()
-            else:
-                print 'command does not match any transfer commands\n  %s'%(command)
+    """
+    if (sys.argv[2].startswith('s3') or sys.argv[2].startswith('local')):
+        command = ' '.join(sys.argv[1:]).strip()
+        if re.match(copy_pattern, command) or re.match(download_pattern, command) or re.match(upload_pattern, command):
+            source = sys.argv[1]
+            destination = sys.argv[2]
+            if not source.endswith('/') and not destination.endswith('/'):
+                lines = [command]
+            elif (source.endswith('/') and not destination.endswith('/')) or (not source.endswith('/') and destination.endswith('/')):
+                print "Fatal error: for rsync functionality both source and target specifications should end with frontslashes"
                 sys.exit()
+            else:    # rsync functionality
+                if re.match(copy_pattern, command):    # bucket-to-bucket
+                    target_bucketname, target_keyprefix = destination.split('/')[2], '/'.join(destination.split('/')[3:])
+                    source_bucketname, source_keyprefix = source.split('/')[2], '/'.join(source.split('/')[3:])
+                    target_bucket = conn.get_bucket(target_bucketname)
+                    source_bucket = conn.get_bucket(source_bucketname)
+                    target_lst = target_bucket.list(prefix=target_keyprefix)
+                    lst = source_bucket.list(prefix=source_keyprefix)
+                    for key in lst:
+                        if key.name.endswith('/'):
+                            continue
+                        source_key = source_bucket.get_key(key.name)
+                        target_key = target_bucket.get_key('%s/%s'%(target_keyprefix, key.name))
+                        # copy if the target key does not exist, or if the target and source keys are not the same size
+                        if target_key:
+                            if target_key.size != source_key.size:
+                                lines.append('s3://%s/%s s3://%s/%s%s'%(source_bucketname, key.name, target_bucketname, target_keyprefix, key.name))
+                        else:
+                            lines.append('s3://%s/%s s3://%s/%s%s'%(source_bucketname, key.name, target_bucketname, target_keyprefix, key.name))
+                elif re.match(download_pattern, command):
+                    target_directory = '/'.join(destination.split('/')[2:])
+                    source_bucketname, source_keyprefix = source.split('/')[2], '/'.join(source.split('/')[3:])
+                    source_bucket = conn.get_bucket(source_bucketname)
+                    lst = source_bucket.list(prefix=source_keyprefix)
+                        
+                    for key in lst:
+                        if key.name.endswith('/'):
+                            continue
+                        source_key = source_bucket.get_key(key.name)
+                        if os.path.isfile('%s/%s'%(target_directory, key.name)):
+                            if source_key.size != os.path.getsize('%s/%s'%(target_directory, key.name)):
+                                lines.append('s3://%s/%s local://%s/%s'%(source_bucketname, key.name, target_directory, key.name))
+                        else:
+                            lines.append('s3://%s/%s local://%s/%s'%(source_bucketname, key.name, target_directory, key.name))
+                elif re.match(upload_pattern, command):
+                    source_directory = '/'.join(source.split('/')[2:])
+                    target_bucketname, target_keyprefix = destination.split('/')[2], '/'.join(destination.split('/')[3:])
+                    source_files = recursive_glob('%s'%(source_directory))
+                    target_bucket = conn.get_bucket(target_bucketname)
+                    for source_file in source_files:
+                        if not os.path.isfile(source_file):
+                            continue
+                        target_key = target_bucket.get_key('%s/%s'%(target_keyprefix, source_file))
+                        if target_key:
+                            if target_key.size != os.path.getsize(source_file):
+                                lines.append('local://%s s3://%s/%s%s'%(source_file, target_bucketname, target_keyprefix, source_file))
+                        else:
+                            lines.append('local://%s s3://%s/%s%s'%(source_file, target_bucketname, target_keyprefix, source_file))
+                else:
+                    print "Fatal error: pattern %s does not match built-in patterns"%(command)
+                    sys.exit()
         else:
-            criteria = sys.argv[1].split(':')
-            filetypes = sys.argv[2:]
+            print 'command does not match any transfer commands\n  %s'%(command)
+            sys.exit()
+    #else:
+    #    criteria = sys.argv[1].split(':')
+    #    filetypes = sys.argv[2:]
 elif len(sys.argv) == 2:
     if os.path.isfile(sys.argv[1]):
         lines = open(sys.argv[1], 'r').readlines()
     else:
-        if sys.argv[1].split(':') > 1 and sys.argv[1].split(':')[1].startswith('vw'):
-            criteria = sys.argv[1].split(':')
-            filetypes = ['all']
-        else:
-            print "Fatal Error: argument %s is not an existing file and is not a database selection criteria"%(sys.argv[1])
-            sys.exit()
+        #if sys.argv[1].split(':') > 1 and sys.argv[1].split(':')[1].startswith('vw'):
+        #    criteria = sys.argv[1].split(':')
+        #    filetypes = ['all']
+        #else:
+        print "Fatal Error: argument %s is not an existing file and is not a database selection criteria"%(sys.argv[1])
+        sys.exit()
 else:
     print "Usage:"
-    print "key-name file"
-    print "  s3turbo.py key_name_file [remap]"
-    print "OR single-line transfer:"
+    #print "key-name file"
+    #print "  s3turbo.py key_name_file [remap]"
+    print "single-line transfer:"
     print "  to download - s3turbo.py s3://bucket_name/key_name local://file_path"
     print "  to upload   - s3turbo.py local://file_path s3://bucket_name/key_name"
     print "  to copy     - s3turbo.py s3://bucket_name/key_name s3://bucket_name/key_name"
@@ -206,10 +220,13 @@ else:
     print "  s3turbo.py args [reduced_redundancy] args"
     print ""
     print "The key_name_file format should follow the same conventions, one line per transfer."
-    print "The remap flag is for transferring mapped data between buckets."
-    print "  It removes entries from source mapping files and adds them to target mapping files."
+    #print "The remap flag is for transferring mapped data between buckets."
+    #print "  It removes entries from source mapping files and adds them to target mapping files."
     print "The dryrun flag prints out the files to be transferred, without transferring them. Output is in the standard s3/local://path format."
     print "The reduced_redundancy flag saves some money but has slightly higher odds of data loss"
+    print "Files are automatically not overwritten, so it is safe to restart multiple file transfer operations that were interrupted"
+    print "Download functionality skips existing local files by the same name but only if they are the same size. The copy and upload functionalities currently skip existing files by the same name, but file sizes are not compared."
+    print "Note that if an input file is used, the file list can contain a mixture of download, copy, and upload commands."
     sys.exit()
 
 # apply include and exclude strings
@@ -413,7 +430,8 @@ for transfer_type in ['download', 'copy', 'upload']:
         if k >= int(math.ceil(len(transfer_files)/(0.0+concurrency)))-1:
             rangecap = len(transfer_files)
 
-        print "range %d to %d"%(rangestart, rangecap)
+        if not quiet_flag:
+            print "range %d to %d"%(rangestart, rangecap)
 
         results = []
         answers = []
@@ -428,7 +446,7 @@ for transfer_type in ['download', 'copy', 'upload']:
             elif transfer_type == 'upload':
                 keys_to_add.append(key[3])
 
-            if cnt%50 == 0:
+            if not quiet_flag and cnt%50 == 0:
                 print "\n**********  %s files done  **********\n"%(cnt)
             source_bucketname, source_keyname, dest_bucketname, dest_keyname = key[0], key[1], key[2], key[3]
             d = {}
@@ -466,6 +484,7 @@ for transfer_type in ['download', 'copy', 'upload']:
                 f.close()
                 failkeys.append(transfer_files[j][0])
     
+        """
         if remap_flag and transfer_type == 'move':
             outlines = []
             source_mapping_filename = transferlib.fetch_mapping(source_bucket)
@@ -499,6 +518,7 @@ for transfer_type in ['download', 'copy', 'upload']:
             transferlib.upload_mapping(dest_bucketname)
         elif remap_flag:
             print "Note that the remap flag only works for move transfers"
+        """
 
         pool.close()
         pool.join()

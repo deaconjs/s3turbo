@@ -24,7 +24,11 @@ transferlib.s3_upload("./transferlib.py", "deaconjs.etc.scripts", "transferlib.p
 transferlib.s3_move("deaconjs.etc.scripts", "transferlib.py", "deaconjs.etc.packages", "transferlib/transferlib.py")
 transferlib.s3_download("deaconjs.etc.packages", "transferlib.py", "./transferlib.backedup.py")
 
+upload was taken from gist.github.com/fabiant7t/924094
+download was taken from github.com/mumrah/s3-multipart/blob/master/s3-mp-download.py
+
 """
+
 
 """ TRANSFER FUNCTIONS """
 
@@ -230,7 +234,6 @@ def s3_move(source_bucket_name, keyname, dest_bucket_name, newkeyname, guess_mim
         print "Fatal S3 copy error"
         print "source key %s from %s size %s is different from destination key %s from %s size %s"%(oldkey.name, source_bucket_name, oldkey.size, newkey.name, dest_bucket_name, newkey.size)
         sys.exit()
-
 
 def _upload_part(bucketname, multipart_id, part_num, source_path, offset, bytes, conn, threads, quiet, amount_of_retries=10):
     def _upload(retries_left=amount_of_retries):
@@ -446,6 +449,8 @@ def _gen_byte_ranges(size, num_parts):
     #for i in range(50, 60):
         yield(part_size*i, min(part_size*(i+1)-1, size-1), i)
 
+
+# taken from github.com/mumrah/s3-multipart/blob/master/s3-mp-download.py
 def s3_download(bucketname, keyname, dest_path, quiet=False, parallel_processes=multiprocessing.cpu_count(), headers={}, guess_mimetype=True):
     conn = boto.connect_s3()
     split = 50
