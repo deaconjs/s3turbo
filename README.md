@@ -1,5 +1,5 @@
 # s3turbo
-A Python command-line program for parallel, concurrent transfer of large files to, from, and between s3 buckets, ec2 instances, and local.
+A Python command-line program for parallel, concurrent transfer of large files to, from, and between s3 buckets, ec2 instances, and local. s3turbo moved around 1.5 Pb of data in one project.
 
 
 ## Install
