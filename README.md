@@ -8,7 +8,7 @@ To use, first install boto and filechunkio.
 
 `$ pip install boto, filechunkio`
 
-Configure .boto credentials file as [here](boto.cloudhackers.com/en/latest/boto_config_tut.html), then clone the s3turbo repo.
+Configure .boto credentials file as [here](http://boto.cloudhackers.com/en/latest/boto_config_tut.html), then clone the s3turbo repo.
 
 
 ## Usage
