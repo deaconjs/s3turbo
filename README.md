@@ -1,5 +1,5 @@
 # s3turbo
-A Python command-line program for parallel, concurrent transfer of large files to, from, and between s3 buckets, ec2 instances, and local. s3turbo moved around 1.5 Pb of data in one project.
+A Python command-line program for parallel, concurrent transfer of large files to, from, and between s3 buckets, ec2 instances, and local. 
 
 
 ## Install
@@ -31,7 +31,7 @@ Configure .boto credentials file as [here](http://boto.cloudhackers.com/en/lates
 
   e.g. `s3turbo.py local:///home/username/path s3://owner.run.etc/etc_dir/ include .py exclude .pyc remove_prefix /home/username`
 
-The key_name_file format should follow the same conventions as single-line format, with one line per file to transfer. If an input file is used, the file list can contain a mixture of download, copy, and upload commands, in any order.
+The key_name_file format follows the same conventions as single-line format, with one line per file to transfer. If an input file is used, the file list can contain a mixture of download, copy, and upload commands, in any order.
 
 Files are by default not overwritten, so it is safe to restart multiple file transfer operations that were interrupted. Download functionality skips existing local files by the same name but only if they are the same size. The copy and upload functionalities do check file names, but do not yet check file sizes.
 
